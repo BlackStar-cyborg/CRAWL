@@ -1,0 +1,57 @@
+# ---- Data: never commit (personal data, large files, secrets) -------------------------------
+data/*
+!data/README.md
+*.log
+*.log.*
+*.gz
+*.pcap
+*.pcapng
+*.csv
+*.tsv
+*.jsonl
+*.parquet
+*.duckdb
+*.sqlite
+*.sqlite3
+*.db
+*.key
+*.pem
+.env
+.env.*
+
+# playground runtime output (generated site, logs, token registry and secret)
+playground/logs/*
+!playground/logs/.gitkeep
+playground/state/*
+!playground/state/.gitkeep
+playground/site/*
+!playground/site/.gitkeep
+
+# analysis output folders
+*_out/
+surveyout*/
+charts/
+
+# ---- Python ----------------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# ---- Editors / OS ----------------------------------------------------------------------------
+.DS_Store
+.vscode/
+.idea/
+*.swp
+~$*
+
+# ---- LaTeX build files (if the report lives here) --------------------------------------------
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.out
+*.synctex.gz
+*.toc

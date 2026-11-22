@@ -1,0 +1,109 @@
+# CRAWL playground: a self-contained mini lab for learning, NOT the real testbed.
+#
+#   lab network (internal: no internet access)    172.30.0.0/24
+#     web       nginx, JSON + combined + common logs        172.30.0.10  www.crawl-lab.test
+#     apache    Apache httpd (profile "banner")             172.30.0.11  apache.crawl-lab.test
+#     polite / rude / scanner / fakebot / resolver          172.30.0.101 - .105  (one IP per actor)
+#
+# Only web and apache are also on a normal network, so you can open them in your browser on
+# http://localhost:8080 and :8081. Everything else can only talk to the lab.
+# See README.md for the commands.
+
+name: crawl-playground
+
+x-python-tool: &python-tool
+  image: python:3.12-slim
+  working_dir: /tools
+  volumes:
+    - ./tools:/tools:ro
+    - ./logs:/logs
+    - ./state:/state
+    - ./site:/site
+  environment:
+    CRAWL_TARGET: http://www.crawl-lab.test
+    CRAWL_LOG_DIR: /logs
+    CRAWL_STATE_DIR: /state
+    PYTHONDONTWRITEBYTECODE: "1"
+    PYTHONUNBUFFERED: "1"
+  profiles: ["tools"]
+
+services:
+  # --- the "node" ---------------------------------------------------------------------------
+  web:
+    # nginx stable branch. Must be >= 1.30.7 (fixes the "NGINX2Root" CVEs, Nov 2026).
+    # Check after pulling: docker compose run --rm --no-deps web nginx -v
+    image: nginx:1.30-alpine
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/headers.js:/etc/nginx/njs/headers.js:ro
+      - ./site:/srv/site:ro
+      - ./logs/nginx:/var/log/crawl
+    ports:
+      - "127.0.0.1:8080:80"          # only reachable from your own machine
+    networks:
+      lab:
+        ipv4_address: 172.30.0.10
+        aliases: [www.crawl-lab.test]
+      browse: {}
+
+  apache:
+    image: httpd:2.4-alpine
+    profiles: ["banner"]
+    volumes:
+      - ./apache/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
+      - ./site:/srv/site:ro
+      - ./logs/apache:/var/log/crawl
+    ports:
+      - "127.0.0.1:8081:80"
+    networks:
+      lab:
+        ipv4_address: 172.30.0.11
+        aliases: [apache.crawl-lab.test]
+      browse: {}
+
+  # --- token generator + content builder (writes ./site and ./state/registry.sqlite) ---------
+  builder:
+    <<: *python-tool
+    command: ["python", "build_site.py", "--out", "/site", "--state", "/state"]
+    network_mode: none
+
+  # --- simulated visitors, each with its own IP ----------------------------------------------
+  polite:
+    <<: *python-tool
+    command: ["python", "traffic.py", "polite"]
+    networks: { lab: { ipv4_address: 172.30.0.101 } }
+
+  rude:
+    <<: *python-tool
+    command: ["python", "traffic.py", "rude"]
+    networks: { lab: { ipv4_address: 172.30.0.102 } }
+
+  scanner:
+    <<: *python-tool
+    command: ["python", "traffic.py", "scanner"]
+    networks: { lab: { ipv4_address: 172.30.0.103 } }
+
+  fakebot:
+    <<: *python-tool
+    command: ["python", "traffic.py", "fakebot"]
+    networks: { lab: { ipv4_address: 172.30.0.104 } }
+
+  resolver:
+    <<: *python-tool
+    command: ["python", "traffic.py", "resolver"]
+    networks: { lab: { ipv4_address: 172.30.0.105 } }
+
+  # --- matcher / mini analysis ------------------------------------------------------------------
+  matcher:
+    <<: *python-tool
+    command: ["python", "match_tokens.py", "--log", "/logs/nginx/access.json", "--site", "/site",
+              "--state", "/state", "--out", "/logs/analysis"]
+    network_mode: none
+
+networks:
+  lab:
+    internal: true                    # no route to the internet: scanners can only hit the lab
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+  browse: {}
