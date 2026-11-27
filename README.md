@@ -13,6 +13,7 @@ Supervisors: Andy Aidoo, Thomas Gr√ºbl, Prof. Dr. Burkhard Stiller. Sept 2026 ‚Ä
 | Folder | What goes there |
 |---|---|
 | `playground/` | Local Docker lab for learning and first experiments. **Not the real testbed.** Start here. |
+| `pilot/` | The first real node (n01): node setup, deployment, log pull and token matching. Runbook: [`pilot/README.md`](pilot/README.md) |
 | `docs/` | Design notes, requirements, decision records, meeting notes |
 | `analysis/` | Scripts that analyse logs and datasets (e.g. `ctpot_survey.py`) |
 | `src/` | The CRAWL prototype components, once the design is settled (empty for now) |
